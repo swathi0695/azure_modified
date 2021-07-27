@@ -1,0 +1,12 @@
+---
+ref: azure_modified
+name : Azure_Modified
+description : Pack for rectifying the certificate issue
+keywords:
+  - Azure
+  - modified
+version: 0.0.1
+#python_versions:
+# - "2"
+author : Infracode
+email : ustmayanotification@gmail.com
