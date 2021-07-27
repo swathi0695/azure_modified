@@ -1,0 +1,12 @@
+---
+name: Single_VM_Status
+runner_type: python-script
+description: Gives status of a VM in Azure
+enabled: true
+entry_point: single_vm_status.py
+parameters:
+  vm:
+    type: string
+    description: Name of the VM
+    required: true
+
