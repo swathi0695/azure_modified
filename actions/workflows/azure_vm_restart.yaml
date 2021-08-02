@@ -1,0 +1,134 @@
+version: 1.0
+tasks:
+  # [462, 13]
+  get_event_from_mcm:
+    action: core.echo
+    input:
+      message: Get the event from mcm when a VM goes down/Stopped.
+    next:
+      - do:
+          - check_vm_status_
+        when: <% succeeded() %>
+      - do:
+          - post_event
+  # [538, 252]
+  vm_running:
+    action: core.echo
+    input:
+      message: The VM is running in the initial check.
+    next:
+      - do:
+          - post_vm_running_initial_ckeck
+  # [607, 127]
+  post_event:
+    action: mcm.MCM_post
+    input:
+      log_level: DEBUG
+      call_back_data: "{\"event_trigger\": \"recieved\"}"
+  # [656, 374]
+  post_vm_running_initial_ckeck:
+    action: mcm.MCM_post
+    input:
+      log_level: DEBUG
+      call_back_data: "{\n	\"Message\": <% ctx().subject %>,\n	\"VM_Name\": <% ctx().vm_name%>,\n	\"Cloud_provider\": <% ctx().classification %>,\n	\"IP_address\": <% ctx().instance_ip%>,\n	\"Resolution\": \"VM is running fine, Restart is not required\",\n	\"session_id\": <% ctx().session_id %>,\n	\"workflowType\": <% ctx().workflow_type %>\n}"
+  # [120, 384]
+  post_vmStart_success:
+    action: mcm.MCM_post
+    input:
+      log_level: DEBUG
+      call_back_data: "{\n	\"Message\": <% ctx().subject %>,\n	\"VM_Name\": <% ctx().vm_name%>,\n	\"Cloud_provider\": <% ctx().classification %>,\n	\"IP_address\": <% ctx().instance_ip%>,\n	\"Resolution\": \"VM is running fine, Restart is not required\",\n	\"session_id\": <% ctx().session_id %>,\n	\"workflowType\": <% ctx().workflow_type %>\n}"
+    next:
+      - do:
+          - wait
+  # [423, 697]
+  vm_start_failed:
+    action: core.echo
+    input:
+      message: Failed to start VM
+    next:
+      - do:
+          - post_failed_after_restart_recheck
+      - do:
+          - post_recheck_status_no2
+  # [393, 377]
+  post_vmStart_failed:
+    action: mcm.MCM_post
+    input:
+      log_level: DEBUG
+      call_back_data: "{\n	\"Message\": <% ctx().subject%>,\n	\"VM_Name\": <% ctx().vm_name%>,\n	\"Cloud_provider\": <% ctx().classification %>,\n	\"IP_address\": <% ctx().instance_ip%>,\n	\"Resolution\": \"Problem reported when starting the VM\"\n	\"session_id\": <% ctx().session_id %>,\n	\"workflowType\": <% ctx().workflow_type %>\n	\"Loginfo\": <% ctx().error_log %>\n}"
+  # [116, 703]
+  post_recheck_vm_status:
+    action: mcm.MCM_post
+    input:
+      log_level: DEBUG
+      call_back_data: "{\"recheck_status\": \"VM running\"}"
+  # [317, 128]
+  check_vm_status_:
+    action: azure_modified.Single_VM_Status
+    next:
+      - do:
+          - restart_vm
+        when: <% result().result.status = 'stopped' %>
+      - do:
+          - vm_running
+        when: <% result().result.status = 'running' %>
+    input:
+      log_level: DEBUG
+      vm: <% ctx().vm_name %>
+  # [219, 588]
+  recheck_vm_status:
+    action: azure_modified.Single_VM_Status
+    next:
+      - do:
+          - post_recheck_vm_status
+        when: <% result().result.status = ('starting' or 'running') %>
+      - do:
+          - vm_start_failed
+        when: <% result().result.status != ('starting' or 'running') %>
+    input:
+      log_level: DEBUG
+      vm: <% ctx().vm_name %>
+      timeout: 30
+  # [192, 257]
+  restart_vm:
+    action: azure_modified.Restart_VM
+    input:
+      log_level: DEBUG
+      vm_name: <% ctx().vm_name %>
+      group_name: <% ctx().group_name %>
+    next:
+      - do:
+          - post_vmStart_success
+        when: <% 'restart successful' in task(restart_vm).result.result.message %>
+      - do:
+          - post_vmStart_failed
+        when: <% 'restart successfull' in task(restart_vm).result.result.message %>
+        publish:
+          - error_log: <% result().result.error %>
+  # [289, 825]
+  post_failed_after_restart_recheck:
+    action: mcm.MCM_post
+    input:
+      log_level: DEBUG
+      call_back_data: "{\"vm\": \"failed after restart and status check\"}"
+  # [553, 826]
+  post_recheck_status_no2:
+    action: azure_modified.Single_VM_Status
+    input:
+      log_level: DEBUG
+      vm: <% ctx().vm_name %>
+  # [149, 483]
+  wait:
+    action: core.noop
+    next:
+      - do:
+          - recheck_vm_status
+input:
+  - subject
+  - classification
+  - instance_ip
+  - vm_name
+  - group_name
+  - session_id
+  - instance_id
+  - workflow_type
