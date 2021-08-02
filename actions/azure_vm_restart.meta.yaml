@@ -1,0 +1,30 @@
+pack: default
+enabled: true
+runner_type: orquesta
+name: azure_vm_restart
+entry_point: workflows/azure_vm_restart.yaml
+parameters:
+  subject:
+    type: string
+    required: true
+  classification:
+    type: string
+    required: true
+  instance_ip:
+    type: string
+    required: true
+  vm_name:
+    type: string
+    required: true
+  group_name:
+    type: string
+    required: true
+  session_id:
+    type: string
+    required: true
+  instance_id:
+    type: string
+    required: true
+  workflow_type:
+    type: string
+    required: true
