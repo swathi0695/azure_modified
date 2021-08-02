@@ -27,8 +27,8 @@ class StopVM(AzureBaseAction):
             # Stop the VM
             async_vm_stop = compute_client.virtual_machines.power_off(
                 group_name, vm_name)
-            result = {"message": vm_name + "stopped"}
+            result = {"VM": vm_name, "status": "stopped"}
         except CloudError:
             result = {"error": "A VM operation failed:\n" + traceback.format_exc()}
         
-        return json.dump(result)
+        return result
