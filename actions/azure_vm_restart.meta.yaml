@@ -1,4 +1,4 @@
-pack: default
+pack: azure_modified
 enabled: true
 runner_type: orquesta
 name: azure_vm_restart
